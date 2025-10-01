@@ -1,124 +1,134 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const form = document.getElementById("todo-form");
-  const input = document.getElementById("todo-input");
-  const list = document.getElementById("todo-list");
+// todo.js (ES6-Modul)
+const DOM = {
+  form: document.getElementById("todo-form"),
+  input: document.getElementById("todo-input"),
+  list: document.getElementById("todo-list"),
+  clock: document.getElementById("liveClock")
+};
 
+const CONFIG = {
+  apiUrl: "todo.php",
+  weekdays: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+};
+
+document.addEventListener("DOMContentLoaded", async () => {
+  setupEventListeners();
+  updateClock();
+  setInterval(updateClock, 1000);
+  await loadTasks();
+});
+
+function setupEventListeners() {
+  DOM.form.addEventListener("submit", handleFormSubmit);
+  DOM.list.addEventListener("dragover", handleDragOver);
+}
+
+async function loadTasks() {
   try {
     const response = await fetch("todo.json");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const tasks = await response.json();
 
     if (Array.isArray(tasks)) {
-      tasks.forEach(task => {
-        const li = createTodoItem(task.text, task.done);
-        list.appendChild(li);
+      tasks.forEach(({ text, done }) => {
+        const li = createTodoItem(text, done);
+        DOM.list.appendChild(li);
       });
     } else {
-      console.warn("Unerwartetes Format in todo.json:", tasks);
+      console.warn("Unerwartetes Format:", tasks);
     }
   } catch (err) {
-    console.error("Fehler beim Laden der To-Dos:", err);
+    console.error("Fehler beim Laden:", err);
   }
+}
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const task = input.value.trim();
-    if (!task) return;
+function handleFormSubmit(e) {
+  e.preventDefault();
+  const task = DOM.input.value.trim();
+  if (!task) return;
 
-    const li = createTodoItem(task, false);
-    list.appendChild(li);
-    input.value = "";
+  const li = createTodoItem(task, false);
+  DOM.list.appendChild(li);
+  DOM.input.value = "";
+  saveNewTask(task);
+}
 
-    try {
-      await fetch("todo.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task, done: false })
-      });
-    } catch (err) {
-      console.error("Fehler beim Speichern der neuen Aufgabe:", err);
-    }
-  });
+function createTodoItem(text, done) {
+  const li = document.createElement("li");
+  li.draggable = true;
 
-  function createTodoItem(text, done) {
-    const li = document.createElement("li");
-    li.draggable = true;
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = done;
+  checkbox.onchange = () => updateTaskStatus(text, checkbox.checked, li);
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = done;
-    checkbox.onchange = async () => {
-      li.classList.toggle("done", checkbox.checked);
-      try {
-        await fetch("todo.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task: text, done: checkbox.checked, update: true })
-        });
-      } catch (err) {
-        console.error("Fehler beim Aktualisieren der Aufgabe:", err);
-      }
-    };
+  const label = document.createElement("label");
+  label.textContent = text;
 
-    const label = document.createElement("label");
-    label.textContent = text;
+  const removeBtn = document.createElement("button");
+  removeBtn.textContent = "🗑️";
+  removeBtn.className = "remove-btn";
+  removeBtn.onclick = () => deleteTask(text, li);
 
-    const removeBtn = document.createElement("button");
-    removeBtn.textContent = "🗑️";
-    removeBtn.className = "remove-btn";
-    removeBtn.onclick = async () => {
-      li.remove();
-      try {
-        await fetch("todo.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task: text, delete: true })
-        });
-      } catch (err) {
-        console.error("Fehler beim Löschen der Aufgabe:", err);
-      }
-    };
+  li.append(checkbox, label, removeBtn);
+  li.classList.toggle("done", done);
 
-    li.appendChild(checkbox);
-    li.appendChild(label);
-    li.appendChild(removeBtn);
-    li.classList.toggle("done", done);
+  li.addEventListener("dragstart", () => li.classList.add("dragging"));
+  li.addEventListener("dragend", () => li.classList.remove("dragging"));
 
-    li.addEventListener("dragstart", () => li.classList.add("dragging"));
-    li.addEventListener("dragend", () => li.classList.remove("dragging"));
+  return li;
+}
 
-    return li;
+function updateTaskStatus(text, done, li) {
+  li.classList.toggle("done", done);
+  fetch(CONFIG.apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task: text, done, update: true })
+  }).catch(err => console.error("Fehler beim Aktualisieren:", err));
+}
+
+function deleteTask(text, li) {
+  li.remove();
+  fetch(CONFIG.apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task: text, delete: true })
+  }).catch(err => console.error("Fehler beim Löschen:", err));
+}
+
+function saveNewTask(text) {
+  fetch(CONFIG.apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task: text, done: false })
+  }).catch(err => console.error("Fehler beim Speichern:", err));
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  const dragging = document.querySelector(".dragging");
+  const afterElement = getDragAfterElement(DOM.list, e.clientY);
+  if (afterElement == null) {
+    DOM.list.appendChild(dragging);
+  } else {
+    DOM.list.insertBefore(dragging, afterElement);
   }
+}
 
-  list.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    const dragging = document.querySelector(".dragging");
-    const afterElement = getDragAfterElement(list, e.clientY);
-    if (afterElement == null) {
-      list.appendChild(dragging);
-    } else {
-      list.insertBefore(dragging, afterElement);
-    }
-  });
+function getDragAfterElement(container, y) {
+  const items = [...container.querySelectorAll("li:not(.dragging)")];
+  return items.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    return offset < 0 && offset > closest.offset
+      ? { offset, element: child }
+      : closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
 
-  function getDragAfterElement(container, y) {
-    const items = [...container.querySelectorAll("li:not(.dragging)")];
-    return items.reduce((closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height / 2;
-      return offset < 0 && offset > closest.offset
-        ? { offset, element: child }
-        : closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-  }
-
-  function updateClock() {
-    const now = new Date();
-    const days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-    const formatted = `${days[now.getDay()]}. ${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-    document.getElementById('liveClock').textContent = formatted;
-  }
-  updateClock();
-  setInterval(updateClock, 1000);
-  loadJson();
-});
+function updateClock() {
+  const now = new Date();
+  const formatted = `${CONFIG.weekdays[now.getDay()]}. ${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  DOM.clock.textContent = formatted;
+}
