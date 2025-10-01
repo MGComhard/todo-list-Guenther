@@ -1,4 +1,3 @@
-// todo.js (ES6-Modul)
 const DOM = {
   form: document.getElementById("todo-form"),
   input: document.getElementById("todo-input"),
@@ -129,6 +128,13 @@ function getDragAfterElement(container, y) {
 
 function updateClock() {
   const now = new Date();
-  const formatted = `${CONFIG.weekdays[now.getDay()]}. ${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  const formatted =
+  CONFIG.weekdays[now.getDay()] + ". " +
+  String(now.getDate()).padStart(2, '0') + "." +
+  String(now.getMonth() + 1).padStart(2, '0') + "." +
+  now.getFullYear() + ", " +
+  String(now.getHours()).padStart(2, '0') + ":" +
+  String(now.getMinutes()).padStart(2, '0') + ":" +
+  String(now.getSeconds()).padStart(2, '0');
   DOM.clock.textContent = formatted;
 }
