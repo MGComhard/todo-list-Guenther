@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   form.addEventListener("submit", async (e) => {
+    console.log("Formular wurde abgeschickt");
     e.preventDefault();
     const task = input.value.trim();
     if (!task) return;
