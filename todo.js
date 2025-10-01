@@ -120,4 +120,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   updateClock();
   setInterval(updateClock, 1000);
+  loadJson();
 });
