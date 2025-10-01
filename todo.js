@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const input = document.getElementById("todo-input");
   const list = document.getElementById("todo-list");
 
-  // 🟢 Lade gespeicherte Aufgaben
+  // 🟢 To-Dos laden
   const response = await fetch("todo.json");
   const tasks = await response.json();
   tasks.forEach(task => {
@@ -64,14 +64,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     li.appendChild(removeBtn);
     li.classList.toggle("done", done);
 
-    // Drag events bleiben wie gehabt
     li.addEventListener("dragstart", () => li.classList.add("dragging"));
     li.addEventListener("dragend", () => li.classList.remove("dragging"));
 
     return li;
   }
 
-  // Drag & Drop bleibt unverändert
   list.addEventListener("dragover", (e) => {
     e.preventDefault();
     const dragging = document.querySelector(".dragging");
