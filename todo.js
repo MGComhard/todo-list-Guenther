@@ -3,16 +3,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   const input = document.getElementById("todo-input");
   const list = document.getElementById("todo-list");
 
-  // 🟢 To-Dos laden
-  const response = await fetch("todo.json");
-  const tasks = await response.json();
-  tasks.forEach(task => {
-    const li = createTodoItem(task.text, task.done);
-    list.appendChild(li);
-  });
+  try {
+    const response = await fetch("todo.json");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const tasks = await response.json();
+
+    if (Array.isArray(tasks)) {
+      tasks.forEach(task => {
+        const li = createTodoItem(task.text, task.done);
+        list.appendChild(li);
+      });
+    } else {
+      console.warn("Unerwartetes Format in todo.json:", tasks);
+    }
+  } catch (err) {
+    console.error("Fehler beim Laden der To-Dos:", err);
+  }
 
   form.addEventListener("submit", async (e) => {
-    console.log("Formular wurde abgeschickt");
     e.preventDefault();
     const task = input.value.trim();
     if (!task) return;
@@ -21,11 +29,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     list.appendChild(li);
     input.value = "";
 
-    await fetch("todo.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task, done: false })
-    });
+    try {
+      await fetch("todo.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task, done: false })
+      });
+    } catch (err) {
+      console.error("Fehler beim Speichern der neuen Aufgabe:", err);
+    }
   });
 
   function createTodoItem(text, done) {
@@ -37,11 +49,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     checkbox.checked = done;
     checkbox.onchange = async () => {
       li.classList.toggle("done", checkbox.checked);
-      await fetch("todo.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task: text, done: checkbox.checked, update: true })
-      });
+      try {
+        await fetch("todo.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task: text, done: checkbox.checked, update: true })
+        });
+      } catch (err) {
+        console.error("Fehler beim Aktualisieren der Aufgabe:", err);
+      }
     };
 
     const label = document.createElement("label");
@@ -50,13 +66,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const removeBtn = document.createElement("button");
     removeBtn.textContent = "🗑️";
     removeBtn.className = "remove-btn";
-    removeBtn.onclick = () => {
+    removeBtn.onclick = async () => {
       li.remove();
-      fetch("todo.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task: text, delete: true })
-      });
+      try {
+        await fetch("todo.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task: text, delete: true })
+        });
+      } catch (err) {
+        console.error("Fehler beim Löschen der Aufgabe:", err);
+      }
     };
 
     li.appendChild(checkbox);
@@ -91,20 +111,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         : closest;
     }, { offset: Number.NEGATIVE_INFINITY }).element;
   }
-});
 
   function updateClock() {
     const now = new Date();
     const days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-    const dayOfWeek = days[now.getDay()];
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    const formatted = `${dayOfWeek}. ${day}.${month}.${year}, ${hours}:${minutes}:${seconds}`;
+    const formatted = `${days[now.getDay()]}. ${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     document.getElementById('liveClock').textContent = formatted;
   }
   updateClock();
   setInterval(updateClock, 1000);
+});
