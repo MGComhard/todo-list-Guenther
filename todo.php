@@ -14,7 +14,6 @@ if (!$data || !isset($data["task"])) {
 }
 
 $taskText = trim($data["task"]);
-
 if (isset($data["delete"]) && $data["delete"]) {
   $tasks = array_filter($tasks, fn($t) => $t["text"] !== $taskText);
   logAction("Aufgabe gelöscht: $taskText");
