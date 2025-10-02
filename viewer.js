@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateClock();
   setInterval(updateClock, 1000);
   loadJson();
+  DOM.list.addEventListener("dragover", handleDragOver);
 });
 
 function updateClock() {
@@ -51,5 +52,30 @@ function createSimpleItem(text, done) {
   const li = document.createElement("li");
   li.textContent = text;
   li.className = done ? "done" : "";
+  li.draggable = true;
+  li.addEventListener("dragstart", () => li.classList.add("dragging"));
+  li.addEventListener("dragend", () => li.classList.remove("dragging"));
+
   return li;
+}
+function handleDragOver(e) {
+  e.preventDefault();
+  const dragging = document.querySelector(".dragging");
+  const afterElement = getDragAfterElement(DOM.list, e.clientY);
+  if (afterElement == null) {
+    DOM.list.appendChild(dragging);
+  } else {
+    DOM.list.insertBefore(dragging, afterElement);
+  }
+}
+
+function getDragAfterElement(container, y) {
+  const items = [...container.querySelectorAll("li:not(.dragging)")];
+  return items.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    return offset < 0 && offset > closest.offset
+      ? { offset, element: child }
+      : closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }

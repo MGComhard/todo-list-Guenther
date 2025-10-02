@@ -71,7 +71,6 @@ function createTodoItem(text, done) {
 
   li.append(checkbox, label, removeBtn);
   li.classList.toggle("done", done);
-
   li.addEventListener("dragstart", () => li.classList.add("dragging"));
   li.addEventListener("dragend", () => li.classList.remove("dragging"));
 
