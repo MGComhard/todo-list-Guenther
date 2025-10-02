@@ -34,6 +34,12 @@ elseif (isset($data["update"])) {
 
 else {
   $exists = array_filter($tasks, fn($t) => $t["id"] === $id);
+  if (trim($text) === "") {
+    http_response_code(400);
+    echo json_encode(["error" => "Leerer Text ist nicht erlaubt"]);
+    logAction("Fehlgeschlagene Aufgabe: Leerer Text");
+    exit;
+  }
   if (!$exists) {
     $tasks[] = [
       "id" => $id,

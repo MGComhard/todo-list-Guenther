@@ -44,8 +44,10 @@ async function loadTasks() {
 function handleFormSubmit(e) {
   e.preventDefault();
   const task = DOM.input.value.trim();
-  if (!task)
+  if (!task) {
+    showAlert("Bitte gib einen Text ein!");
     return;
+  }
 
   const id = Date.now().toString();
   const li = createTodoItem(id, task, false);
@@ -126,6 +128,13 @@ function getDragAfterElement(container, y) {
       ? { offset, element: child }
       : closest;
   }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function showAlert(alert_text) {
+  const box = document.getElementById("message");
+  box.textContent = alert_text;
+  box.style.display = "block";
+  setTimeout(() => box.style.display = "none", 3000);
 }
 
 function updateClock() {
