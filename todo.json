@@ -6,5 +6,9 @@
     {
         "text": "Essen",
         "done": false
+    },
+    {
+        "text": "Hausaufgaben machen",
+        "done": false
     }
 ]
