@@ -29,8 +29,8 @@ async function loadTasks() {
     const tasks = await response.json();
 
     if (Array.isArray(tasks)) {
-      tasks.forEach(({ text, done }) => {
-        const li = createTodoItem(text, done);
+      tasks.forEach(({ id, text, done }) => {
+        const li = createTodoItem(id, text, done);
         DOM.list.appendChild(li);
       });
     } else {
@@ -44,22 +44,25 @@ async function loadTasks() {
 function handleFormSubmit(e) {
   e.preventDefault();
   const task = DOM.input.value.trim();
-  if (!task) return;
+  if (!task)
+    return;
 
-  const li = createTodoItem(task, false);
+  const id = Date.now().toString();
+  const li = createTodoItem(id, task, false);
   DOM.list.appendChild(li);
   DOM.input.value = "";
-  saveNewTask(task);
+  saveNewTask(id, task);
 }
 
-function createTodoItem(text, done) {
+function createTodoItem(id, text, done) {
   const li = document.createElement("li");
   li.draggable = true;
+  li.dataset.id = id;
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = done;
-  checkbox.onchange = () => updateTaskStatus(text, checkbox.checked, li);
+  checkbox.onchange = () => updateTaskStatus(id, checkbox.checked, li);
 
   const label = document.createElement("label");
   label.textContent = text;
@@ -67,7 +70,7 @@ function createTodoItem(text, done) {
   const removeBtn = document.createElement("button");
   removeBtn.textContent = "🗑️";
   removeBtn.className = "remove-btn";
-  removeBtn.onclick = () => deleteTask(text, li);
+  removeBtn.onclick = () => deleteTask(id, li);
 
   li.append(checkbox, label, removeBtn);
   li.classList.toggle("done", done);
@@ -77,29 +80,29 @@ function createTodoItem(text, done) {
   return li;
 }
 
-function updateTaskStatus(text, done, li) {
+function updateTaskStatus(id, done, li) {
   li.classList.toggle("done", done);
   fetch(CONFIG.apiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task: text, done, update: true })
+    body: JSON.stringify({ id, done, update: true })
   }).catch(err => console.error("Fehler beim Aktualisieren:", err));
 }
 
-function deleteTask(text, li) {
+function deleteTask(id, li) {
   li.remove();
   fetch(CONFIG.apiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task: text, delete: true })
+    body: JSON.stringify({ id, delete: true })
   }).catch(err => console.error("Fehler beim Löschen:", err));
 }
 
-function saveNewTask(text) {
+function saveNewTask(id, text) {
   fetch(CONFIG.apiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task: text, done: false })
+    body: JSON.stringify({ id, task: text, done: false })
   }).catch(err => console.error("Fehler beim Speichern:", err));
 }
 

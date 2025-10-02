@@ -33,12 +33,11 @@ async function loadJson() {
     const response = await fetch(CONFIG.jsonUrl);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const tasks = await response.json();
-
     if (!Array.isArray(tasks)) throw new Error("Ungültiges Format");
 
     DOM.list.innerHTML = "";
-    tasks.forEach(({ text, done }) => {
-      const li = createSimpleItem(text, done);
+    tasks.forEach(({ id, text, done }) => {
+      const li = createSimpleItem(id, text, done);
       DOM.list.appendChild(li);
     });
 
@@ -48,16 +47,17 @@ async function loadJson() {
   }
 }
 
-function createSimpleItem(text, done) {
+function createSimpleItem(id, text, done) {
   const li = document.createElement("li");
   li.textContent = text;
   li.className = done ? "done" : "";
   li.draggable = true;
+  li.dataset.id = id;
   li.addEventListener("dragstart", () => li.classList.add("dragging"));
   li.addEventListener("dragend", () => li.classList.remove("dragging"));
-
   return li;
 }
+
 function handleDragOver(e) {
   e.preventDefault();
   const dragging = document.querySelector(".dragging");
