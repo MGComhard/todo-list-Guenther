@@ -7,7 +7,7 @@
   <link rel="preload" href="Wallpaper/Wallpaper.webp" as="image">
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body pageID="start">
   <div id="liveClock"></div>
   <div class="topbar">
     <a href="todo_view.html" class="nav-link">Übersicht To-Do's</a>
@@ -22,17 +22,17 @@
     </form>
     <div id="message" class="alert_text"></div>
     <ul id="todo-list"></ul>
-  </div>
-  <script src="todo.js" type="module"></script>
-</body>
-  <div id="editModal" class="modal hidden">
-    <div class="modal-content">
-      <h2>Aufgabe bearbeiten</h2>
-      <input type="text" id="editInput" />
-      <div class="modal-buttons">
-        <button id="editSave">Speichern</button>
-        <button id="editCancel">Abbrechen</button>
+    <div id="editModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Aufgabe bearbeiten</h2>
+        <input type="text" id="editInput" />
+        <div class="modal-buttons">
+          <button id="editSave">Speichern</button>
+          <button id="editCancel">Abbrechen</button>
+        </div>
       </div>
     </div>
   </div>
+  <script src="script.js" type="module"></script>
+</body>
 </html>

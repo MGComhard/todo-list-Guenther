@@ -1,3 +1,6 @@
+
+const pageType = document.body.getAttribute("pageID");
+
 const DOM = {
   form: document.getElementById("todo-form"),
   input: document.getElementById("todo-input"),
@@ -7,28 +10,39 @@ const DOM = {
 
 const CONFIG = {
   apiUrl: "todo.php",
+  jsonUrl: "todo.json",
   weekdays: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   updateClock();
   setInterval(updateClock, 1000);
-  await loadTasks();
+  loadTasks();
+  initializeDragAndDrop();
 });
 
 function setupEventListeners() {
-  DOM.form.addEventListener("submit", handleFormSubmit);
-  DOM.list.addEventListener("dragover", handleDragOver);
+  if (DOM.form) {
+    DOM.form.addEventListener("submit", handleFormSubmit);
+  }
+}
+
+function initializeDragAndDrop() {
+  if (DOM.list) {
+    DOM.list.addEventListener("dragover", handleDragOver);
+    DOM.list.addEventListener("dragend", handleDragEnd);
+  }
 }
 
 async function loadTasks() {
   try {
-    const response = await fetch("todo.json");
+    const response = await fetch(CONFIG.jsonUrl);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const tasks = await response.json();
 
     if (Array.isArray(tasks)) {
+      DOM.list.innerHTML = "";
       tasks.forEach(({ id, text, done }) => {
         const li = createTodoItem(id, text, done);
         DOM.list.appendChild(li);
@@ -55,24 +69,6 @@ function handleFormSubmit(e) {
   saveNewTask(id, task);
 }
 
-function createDeleteButton(id, li) {
-  const btn = document.createElement("button");
-  btn.textContent = "🗑️";
-  btn.className = "remove-btn";
-  btn.title = "Löschen";
-  btn.onclick = () => deleteTask(id, li);
-  return btn;
-}
-
-function createEditButton(id, label) {
-  const editBtn = document.createElement("button");
-  editBtn.textContent = "✏️";
-  editBtn.className = "edit-btn";
-  editBtn.title = "Bearbeiten";
-  editBtn.onclick = () => editTask(id, label);
-  return editBtn;
-}
-
 function createTodoItem(id, text, done) {
   const li = document.createElement("li");
   li.draggable = true;
@@ -86,10 +82,14 @@ function createTodoItem(id, text, done) {
   const label = document.createElement("label");
   label.textContent = text;
 
-  const removeBtn = createDeleteButton(id, li);
-  const editBtn = createEditButton(id, label);
+  li.append(checkbox, label);
 
-  li.append(checkbox, label, removeBtn, editBtn);
+  if (pageType === "start") {
+    const removeBtn = createDeleteButton(id, li);
+    const editBtn = createEditButton(id, label);
+    li.append(removeBtn, editBtn);
+  }
+
   li.classList.toggle("done", done);
   li.addEventListener("dragstart", () => li.classList.add("dragging"));
   li.addEventListener("dragend", () => li.classList.remove("dragging"));
@@ -113,6 +113,23 @@ function deleteTask(id, li) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, delete: true })
   }).catch(err => console.error("Fehler beim Löschen:", err));
+}
+
+function createButton(id, label, className, title, onClick) {
+  const btn = document.createElement("button");
+  btn.textContent = label;
+  btn.className = className;
+  btn.title = title;
+  btn.onclick = onClick;
+  return btn;
+}
+
+function createDeleteButton(id, li) {
+  return createButton(id, "🗑️", "remove-btn", "Löschen", () => deleteTask(id, li));
+}
+
+function createEditButton(id, label) {
+  return createButton(id, "✏️", "edit-btn", "Bearbeiten", () => editTask(id, label));
 }
 
 function editTask(id, label) {
@@ -142,7 +159,6 @@ function editTask(id, label) {
     }
     closeModal();
   }
-
   saveBtn.addEventListener("click", onSave);
   cancelBtn.addEventListener("click", closeModal);
 }
@@ -175,6 +191,24 @@ function getDragAfterElement(container, y) {
       ? { offset, element: child }
       : closest;
   }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function handleDragEnd() {
+  const sortedIds = getSortedIds(DOM.list);
+  saveSortItems(sortedIds);
+}
+
+function getSortedIds(container) {
+  return [...container.querySelectorAll("li")].map(li => li.dataset.id);
+}
+
+// neue Reihenfolge der Todos speichern
+function saveSortItems(idArray) {
+  fetch(CONFIG.apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sort: idArray })
+  }).catch(err => console.error("Fehler beim Speichern der Sortierung:", err));
 }
 
 function showAlert(alert_text) {
