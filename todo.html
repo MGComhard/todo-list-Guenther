@@ -15,7 +15,7 @@
     <a href="todo.html" class="nav-link">Linkbeispiel3</a>
   </div>
   <div class="container">
-    <h1>📝 Meine To-Do Liste</h1>
+    <h1>📝 Meine To-Do's</h1>
     <form id="todo-form">
       <input type="text" id="todo-input" placeholder="Neue Aufgabe..." required />
       <button type="submit">➕ Hinzufügen</button>
@@ -25,4 +25,14 @@
   </div>
   <script src="todo.js" type="module"></script>
 </body>
+  <div id="editModal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Aufgabe bearbeiten</h2>
+      <input type="text" id="editInput" />
+      <div class="modal-buttons">
+        <button id="editSave">Speichern</button>
+        <button id="editCancel">Abbrechen</button>
+      </div>
+    </div>
+  </div>
 </html>

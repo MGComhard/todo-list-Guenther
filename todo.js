@@ -59,6 +59,7 @@ function createDeleteButton(id, li) {
   const btn = document.createElement("button");
   btn.textContent = "🗑️";
   btn.className = "remove-btn";
+  btn.title = "Löschen";
   btn.onclick = () => deleteTask(id, li);
   return btn;
 }
@@ -67,6 +68,7 @@ function createEditButton(id, label) {
   const editBtn = document.createElement("button");
   editBtn.textContent = "✏️";
   editBtn.className = "edit-btn";
+  editBtn.title = "Bearbeiten";
   editBtn.onclick = () => editTask(id, label);
   return editBtn;
 }
@@ -114,15 +116,35 @@ function deleteTask(id, li) {
 }
 
 function editTask(id, label) {
-  const newText = prompt("Neuer Text für die Aufgabe:", label.textContent);
-  if (newText && newText.trim()) {
-    label.textContent = newText.trim();
-    fetch(CONFIG.apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, task: newText.trim(), update: true })
-    }).catch(err => console.error("Fehler beim Aktualisieren des Textes:", err));
+  const modal = document.getElementById("editModal");
+  const input = document.getElementById("editInput");
+  const saveBtn = document.getElementById("editSave");
+  const cancelBtn = document.getElementById("editCancel");
+
+  input.value = label.textContent;
+  modal.classList.remove("hidden");
+
+  function closeModal() {
+    modal.classList.add("hidden");
+    saveBtn.removeEventListener("click", onSave);
+    cancelBtn.removeEventListener("click", closeModal);
   }
+
+  function onSave() {
+    const newText = input.value.trim();
+    if (newText) {
+      label.textContent = newText;
+      fetch(CONFIG.apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, task: newText, update: true })
+      }).catch(err => console.error("Fehler beim Aktualisieren des Textes:", err));
+    }
+    closeModal();
+  }
+
+  saveBtn.addEventListener("click", onSave);
+  cancelBtn.addEventListener("click", closeModal);
 }
 
 function saveNewTask(id, text) {

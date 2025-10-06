@@ -28,6 +28,8 @@ $done = $data["done"] ?? false;
 if (isset($data["delete"]) && $data["delete"]) {
   $tasks = array_filter($tasks, fn($t) => $t["id"] !== $id);
   logAction("Aufgabe gelöscht: ID=$id, Text='$text'");
+  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
+  exit;
 }
 
 if (isset($data["update"])) {
@@ -44,24 +46,26 @@ if (isset($data["update"])) {
       break;
     }
   }
+  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
+  exit;
 }
 
-else {
-  $exists = array_filter($tasks, fn($t) => $t["id"] === $id);
-  if (trim($text) === "") {
-    http_response_code(400);
-    echo json_encode(["error" => "Leerer Text ist nicht erlaubt"]);
-    logAction("Fehlgeschlagene Aufgabe: Leerer Text");
-    exit;
-  }
-  if (!$exists) {
-    $tasks[] = [
-      "id" => $id,
-      "text" => $text,
-      "done" => $done
-    ];
-    logAction("Neue Aufgabe hinzugefügt: ID=$id, Text='$text'");
-  }
+$exists = array_filter($tasks, fn($t) => $t["id"] === $id);
+if (trim($text) === "") {
+  http_response_code(400);
+  echo json_encode(["error" => "Leerer Text ist nicht erlaubt"]);
+  logAction("Fehlgeschlagene Aufgabe: Leerer Text");
+  exit;
+}
+if (!$exists) {
+  $tasks[] = [
+    "id" => $id,
+    "text" => $text,
+    "done" => $done
+  ];
+  logAction("Neue Aufgabe hinzugefügt: ID=$id, Text='$text'");
+  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
+  exit;
 }
 
 if (isset($data["sort"]) && is_array($data["sort"])) {
