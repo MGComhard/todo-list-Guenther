@@ -2,7 +2,7 @@ const DOM = {
   list: document.getElementById("todo-list"),
   clock: document.getElementById("liveClock")
 };
-
+console.log("loadJson gestartet");
 const CONFIG = {
   jsonUrl: "todo.json",
   weekdays: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(updateClock, 1000);
   loadJson();
   DOM.list.addEventListener("dragover", handleDragOver);
+  DOM.list.addEventListener("dragend", handleDragEnd);
 });
 
 function updateClock() {
@@ -69,6 +70,11 @@ function handleDragOver(e) {
   }
 }
 
+function handleDragEnd() {
+  const sortedIds = getSortedIds(DOM.list);
+  saveSortOrder(sortedIds);
+}
+
 function getDragAfterElement(container, y) {
   const items = [...container.querySelectorAll("li:not(.dragging)")];
   return items.reduce((closest, child) => {
@@ -78,4 +84,16 @@ function getDragAfterElement(container, y) {
       ? { offset, element: child }
       : closest;
   }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function getSortedIds(container) {
+  return [...container.querySelectorAll("li")].map(li => li.dataset.id);
+}
+
+function saveSortOrder(idArray) {
+  fetch("todo.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sort: idArray })
+  }).catch(err => console.error("Fehler beim Speichern der Sortierung:", err));
 }

@@ -8,6 +8,18 @@ $jsonFile = "todo.json";
 $tasks = file_exists($jsonFile) ? json_decode(file_get_contents($jsonFile), true) : [];
 
 $data = json_decode(file_get_contents("php://input"), true);
+
+// Sonderfall: Nur Sortierung übermittelt
+if (isset($data["sort"]) && is_array($data["sort"])) {
+  $idOrder = $data["sort"];
+  $idMap = array_flip($idOrder);
+  usort($tasks, fn($a, $b) => $idMap[$a["id"]] <=> $idMap[$b["id"]]);
+  logAction("Sortierung aktualisiert: " . implode(", ", $idOrder));
+  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
+  exit;
+}
+
+// Jetzt erst prüfen, ob eine ID vorhanden ist
 if (!$data || !isset($data["id"])) {
   logAction("Ungültige Eingabe empfangen: " . json_encode($data));
   exit;
@@ -49,5 +61,13 @@ else {
     logAction("Neue Aufgabe hinzugefügt: ID=$id, Text='$text'");
   }
 }
+
+if (isset($data["sort"]) && is_array($data["sort"])) {
+  $idOrder = $data["sort"];
+  $idMap = array_flip($idOrder);
+  usort($tasks, fn($a, $b) => $idMap[$a["id"]] <=> $idMap[$b["id"]]);
+  logAction("Sortierung aktualisiert: " . implode(", ", $idOrder));
+}
+
 file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
 ?>

@@ -45,15 +45,22 @@ function handleFormSubmit(e) {
   e.preventDefault();
   const task = DOM.input.value.trim();
   if (!task) {
-    showAlert("Bitte gib einen Text ein!");
+    showAlert("Bitte gib ein To-Do ein!");
     return;
   }
-
   const id = Date.now().toString();
   const li = createTodoItem(id, task, false);
   DOM.list.appendChild(li);
   DOM.input.value = "";
   saveNewTask(id, task);
+}
+
+function createDeleteButton(id, li) {
+  const btn = document.createElement("button");
+  btn.textContent = "🗑️";
+  btn.className = "remove-btn";
+  btn.onclick = () => deleteTask(id, li);
+  return btn;
 }
 
 function createTodoItem(id, text, done) {
@@ -69,10 +76,7 @@ function createTodoItem(id, text, done) {
   const label = document.createElement("label");
   label.textContent = text;
 
-  const removeBtn = document.createElement("button");
-  removeBtn.textContent = "🗑️";
-  removeBtn.className = "remove-btn";
-  removeBtn.onclick = () => deleteTask(id, li);
+  const removeBtn = createDeleteButton(id, li);
 
   li.append(checkbox, label, removeBtn);
   li.classList.toggle("done", done);
