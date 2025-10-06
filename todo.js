@@ -63,6 +63,14 @@ function createDeleteButton(id, li) {
   return btn;
 }
 
+function createEditButton(id, label) {
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "✏️";
+  editBtn.className = "edit-btn";
+  editBtn.onclick = () => editTask(id, label);
+  return editBtn;
+}
+
 function createTodoItem(id, text, done) {
   const li = document.createElement("li");
   li.draggable = true;
@@ -77,8 +85,9 @@ function createTodoItem(id, text, done) {
   label.textContent = text;
 
   const removeBtn = createDeleteButton(id, li);
+  const editBtn = createEditButton(id, label);
 
-  li.append(checkbox, label, removeBtn);
+  li.append(checkbox, label, removeBtn, editBtn);
   li.classList.toggle("done", done);
   li.addEventListener("dragstart", () => li.classList.add("dragging"));
   li.addEventListener("dragend", () => li.classList.remove("dragging"));
@@ -102,6 +111,18 @@ function deleteTask(id, li) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, delete: true })
   }).catch(err => console.error("Fehler beim Löschen:", err));
+}
+
+function editTask(id, label) {
+  const newText = prompt("Neuer Text für die Aufgabe:", label.textContent);
+  if (newText && newText.trim()) {
+    label.textContent = newText.trim();
+    fetch(CONFIG.apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, task: newText.trim(), update: true })
+    }).catch(err => console.error("Fehler beim Aktualisieren des Textes:", err));
+  }
 }
 
 function saveNewTask(id, text) {

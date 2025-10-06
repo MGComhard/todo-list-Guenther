@@ -30,11 +30,17 @@ if (isset($data["delete"]) && $data["delete"]) {
   logAction("Aufgabe gelöscht: ID=$id, Text='$text'");
 }
 
-elseif (isset($data["update"])) {
+if (isset($data["update"])) {
   foreach ($tasks as &$t) {
     if ($t["id"] === $id) {
-      $t["done"] = $done;
-      logAction("Status geändert: ID=$id, Text='{$t["text"]}' → " . ($done ? "erledigt" : "offen"));
+      if (isset($data["done"])) {
+        $t["done"] = $done;
+        logAction("Status geändert: ID=$id, Text='{$t["text"]}' → " . ($done ? "erledigt" : "offen"));
+      }
+      if (isset($data["task"])) {
+        $t["text"] = $text;
+        logAction("Text geändert: ID=$id → '$text'");
+      }
       break;
     }
   }
