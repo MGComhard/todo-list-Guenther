@@ -1,0 +1,7 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE todo (id TEXT PRIMARY KEY, text TEXT, done INTEGER);
+INSERT INTO todo VALUES('1759750001039','Hausaufgaben machen',0);
+INSERT INTO todo VALUES('1','Schlafen',0);
+INSERT INTO todo VALUES('2','Essen',0);
+COMMIT;
