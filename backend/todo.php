@@ -71,7 +71,6 @@ function createTask(&$tasks, $id, $text, $done): void {
 // --------------------------------------------------
 $jsonFile = "todo.json";
 $tasks = loadTasks($jsonFile);
-
 $rawInput = file_get_contents("php://input");
 $data = json_decode($rawInput, true);
 

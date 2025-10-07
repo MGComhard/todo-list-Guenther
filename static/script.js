@@ -9,8 +9,8 @@ const DOM = {
 };
 
 const CONFIG = {
-  apiUrl: "todo.php",
-  jsonUrl: "todo.json",
+  apiUrl: "backend/todo.php",
+  jsonUrl: "backend/todo.json",
   weekdays: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 };
 
