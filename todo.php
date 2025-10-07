@@ -82,6 +82,10 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
+$id   = trim($data["id"]);
+$text = isset($data["task"]) ? trim($data["task"]) : null;
+$done = isset($data["done"]) ? $data["done"] : false;
+
 if (isset($data["sort"]) && is_array($data["sort"])) {
     sortTasks($tasks, $data["sort"]);
     saveTasks($jsonFile, $tasks);
@@ -96,7 +100,7 @@ if (!$data || !isset($data["id"])) {
     exit;
 }
 
-if (!empty($data["delete"])) {
+if (!empty($data["delete"]) && !empty($data["id"])) {
     deleteTask($tasks, $id);
     saveTasks($jsonFile, $tasks);
     echo json_encode(["success" => true]);
@@ -127,10 +131,6 @@ if (!$exists) {
     echo json_encode(["success" => true]);
     exit;
 }
-
-$id   = trim($data["id"]);
-$text = isset($data["task"]) ? trim($data["task"]) : null;
-$done = isset($data["done"]) ? $data["done"] : false;
 
 // Fallback falls nichts von den oberen Bedingungen zutrifft (= einfach speichern)
 saveTasks($jsonFile, $tasks);
