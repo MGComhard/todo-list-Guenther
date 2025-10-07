@@ -1,79 +1,138 @@
 <?php
-function logAction($message) {
-  $timestamp = date("Y-m-d H:i:s");
-  file_put_contents("log.txt", "[$timestamp] $message\n", FILE_APPEND);
+function logAction($message): void {
+    $timestamp = date("Y-m-d H:i:s");
+    file_put_contents("log.txt", "[$timestamp] $message\n", FILE_APPEND);
 }
 
-$jsonFile = "todo.json";
-$tasks = file_exists($jsonFile) ? json_decode(file_get_contents($jsonFile), true) : [];
-
-$data = json_decode(file_get_contents("php://input"), true);
-if (isset($data["sort"]) && is_array($data["sort"])) {
-  $idOrder = $data["sort"];
-  $idMap = array_flip($idOrder);
-  usort($tasks, fn($a, $b) => $idMap[$a["id"]] <=> $idMap[$b["id"]]);
-  logAction("Sortierung aktualisiert: " . implode(", ", $idOrder));
-  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
-  exit;
-}
-if (!$data || !isset($data["id"])) {
-  logAction("Ungültige Eingabe empfangen: " . json_encode($data));
-  exit;
+function loadTasks($filename): array {
+    return file_exists($filename) ? json_decode(file_get_contents($filename), true) : [];
 }
 
-$id = trim($data["id"]);
-$text = trim($data["task"] ?? "");
-$done = $data["done"] ?? false;
-
-if (isset($data["delete"]) && $data["delete"]) {
-  $tasks = array_filter($tasks, fn($t) => $t["id"] !== $id);
-  logAction("Aufgabe gelöscht: ID=$id, Text='$text'");
-  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
-  exit;
+function saveTasks($filename, $tasks): void {
+    file_put_contents($filename, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
 }
 
-if (isset($data["update"])) {
-  foreach ($tasks as &$t) {
-    if ($t["id"] === $id) {
-      if (isset($data["done"])) {
-        $t["done"] = $done;
-        logAction("Status geändert: ID=$id, Text='{$t["text"]}' → " . ($done ? "erledigt" : "offen"));
-      }
-      if (isset($data["task"])) {
-        $t["text"] = $text;
-        logAction("Text geändert: ID=$id → '$text'");
-      }
-      break;
+function sortTasks(&$tasks, $idOrder): void {
+    $idMap = array_flip($idOrder);
+    usort($tasks, function($a, $b) use ($idMap): int {
+        return $idMap[$a["id"]] <=> $idMap[$b["id"]];
+    });
+    logAction("Sortierung aktualisiert: " . implode(", ", $idOrder));
+}
+
+function deleteTask(&$tasks, $id): void {
+    foreach ($tasks as $t) {
+        if ($t["id"] === $id) {
+            logAction("Aufgabe gelöscht: ID=$id, Text='{$t["text"]}'");
+            break;
+        }
     }
-  }
-  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
-  exit;
+    $tasks = array_filter($tasks, function($t) use ($id): bool {
+        return $t["id"] !== $id;
+    });
 }
 
-$exists = array_filter($tasks, fn($t) => $t["id"] === $id);
-if (trim($text) === "") {
-  http_response_code(400);
-  echo json_encode(["error" => "Leerer Text ist nicht erlaubt"]);
-  logAction("Fehlgeschlagene Aufgabe: Leerer Text");
-  exit;
+function updateTask(&$tasks, $id, $text, $done): void {
+    foreach ($tasks as &$t) {
+        if ($t["id"] === $id) {
+            $originalText = $t["text"];
+
+            if (!is_null($done)) {
+                $t["done"] = $done;
+                logAction("Status geändert: ID=$id, Text='{$t["text"]}' → " . ($done ? "erledigt" : "offen"));
+            }
+
+            if (!is_null($text)) {
+                if (trim($text) === "") {
+                    logAction("Fehlgeschlagenes Update: Leerer Text (ID=$id)");
+                    http_response_code(400);
+                    echo json_encode(["error" => "Leerer Text ist nicht erlaubt"]);
+                    exit;
+                }
+                $t["text"] = $text;
+                logAction("Text geändert: ID=$id → '$text' (vorher: '$originalText')");
+            }
+            break;
+        }
+    }
 }
-if (!$exists) {
-  $tasks[] = [
-    "id" => $id,
-    "text" => $text,
-    "done" => $done
-  ];
-  logAction("Neue Aufgabe hinzugefügt: ID=$id, Text='$text'");
-  file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
-  exit;
+
+function createTask(&$tasks, $id, $text, $done): void {
+    $tasks[] = [
+        "id" => $id,
+        "text" => $text,
+        "done" => $done
+    ];
+    logAction("Neue Aufgabe hinzugefügt: ID=$id, Text='$text'");
+}
+
+// --------------------------------------------------
+// --------------------- Ablauf ---------------------
+// --------------------------------------------------
+$jsonFile = "todo.json";
+$tasks = loadTasks($jsonFile);
+
+$rawInput = file_get_contents("php://input");
+$data = json_decode($rawInput, true);
+
+if (json_last_error() !== JSON_ERROR_NONE) {
+    logAction("Ungültiges JSON empfangen: " . json_last_error_msg());
+    http_response_code(400);
+    echo json_encode(["error" => "Ungültiges JSON"]);
+    exit;
 }
 
 if (isset($data["sort"]) && is_array($data["sort"])) {
-  $idOrder = $data["sort"];
-  $idMap = array_flip($idOrder);
-  usort($tasks, fn($a, $b) => $idMap[$a["id"]] <=> $idMap[$b["id"]]);
-  logAction("Sortierung aktualisiert: " . implode(", ", $idOrder));
+    sortTasks($tasks, $data["sort"]);
+    saveTasks($jsonFile, $tasks);
+    echo json_encode(["success" => true]);
+    exit;
 }
 
-file_put_contents($jsonFile, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
-?>
+if (!$data || !isset($data["id"])) {
+    logAction("Ungültige Eingabe empfangen: " . json_encode($data));
+    http_response_code(400);
+    echo json_encode(["error" => "Ungültige Eingabe"]);
+    exit;
+}
+
+if (!empty($data["delete"])) {
+    deleteTask($tasks, $id);
+    saveTasks($jsonFile, $tasks);
+    echo json_encode(["success" => true]);
+    exit;
+}
+
+if (!empty($data["update"])) {
+    updateTask($tasks, $id, $text, isset($data["done"]) ? $data["done"] : null);
+    saveTasks($jsonFile, $tasks);
+    echo json_encode(["success" => true]);
+    exit;
+}
+
+$exists = array_filter($tasks, function($t) use ($id) {
+    return $t["id"] === $id;
+});
+
+if (is_null($text) || $text === "") {
+    http_response_code(400);
+    echo json_encode(["error" => "Leerer Text ist nicht erlaubt"]);
+    logAction("Fehlgeschlagene Aufgabe: Leerer Text");
+    exit;
+}
+
+if (!$exists) {
+    createTask($tasks, $id, $text, $done);
+    saveTasks($jsonFile, $tasks);
+    echo json_encode(["success" => true]);
+    exit;
+}
+
+$id   = trim($data["id"]);
+$text = isset($data["task"]) ? trim($data["task"]) : null;
+$done = isset($data["done"]) ? $data["done"] : false;
+
+// Fallback falls nichts von den oberen Bedingungen zutrifft (= einfach speichern)
+saveTasks($jsonFile, $tasks);
+echo json_encode(["success" => true]);
+exit;
