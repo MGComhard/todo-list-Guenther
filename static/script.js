@@ -10,7 +10,6 @@ const DOM = {
 
 const CONFIG = {
   apiUrl: "backend/todo.php",
-  jsonUrl: "backend/todo.json",
   weekdays: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 };
 
@@ -37,7 +36,7 @@ function initializeDragAndDrop() {
 
 async function loadTasks() {
   try {
-    const response = await fetch(CONFIG.jsonUrl);
+    const response = await fetch(CONFIG.apiUrl); 
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const tasks = await response.json();
 

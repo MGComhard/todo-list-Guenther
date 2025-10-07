@@ -1,78 +1,84 @@
 <?php
+header('Content-Type: application/json');
+
+try {
+    $pdo = new PDO('sqlite:' . __DIR__ . '/database.db');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Datenbankverbindung fehlgeschlagen', 'details' => $e->getMessage()]);
+    exit;
+}
+
 function logAction($message): void {
     $timestamp = date("Y-m-d H:i:s");
-    file_put_contents("log.txt", "[$timestamp] $message\n", FILE_APPEND);
+    file_put_contents(__DIR__ . "/log.txt", "[$timestamp] $message\n", FILE_APPEND);
 }
 
-function loadTasks($filename): array {
-    return file_exists($filename) ? json_decode(file_get_contents($filename), true) : [];
+function loadTasks(PDO $pdo): array {
+    $stmt = $pdo->query("SELECT * FROM todos ORDER BY position ASC");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function saveTasks($filename, $tasks): void {
-    file_put_contents($filename, json_encode(array_values($tasks), JSON_PRETTY_PRINT));
+function createTask(PDO $pdo, $id, $text, $done): void {
+    $stmt = $pdo->query("SELECT MAX(position) FROM todos");
+    $maxPos = $stmt->fetchColumn();
+    $newPos = is_numeric($maxPos) ? $maxPos + 1 : 0;
+    $stmt = $pdo->prepare("INSERT INTO todos (id, text, done, position) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$id, $text, $done ? 1 : 0, $newPos]);
+    logAction("Neue Aufgabe hinzugefügt: ID=$id, Text='$text', Position=$newPos");
 }
 
-function sortTasks(&$tasks, $idOrder): void {
-    $idMap = array_flip($idOrder);
-    usort($tasks, function($a, $b) use ($idMap): int {
-        return $idMap[$a["id"]] <=> $idMap[$b["id"]];
-    });
-    logAction("Sortierung aktualisiert: " . implode(", ", $idOrder));
-}
-
-function deleteTask(&$tasks, $id): void {
-    foreach ($tasks as $t) {
-        if ($t["id"] === $id) {
-            logAction("Aufgabe gelöscht: ID=$id, Text='{$t["text"]}'");
-            break;
+function sortTasks(PDO $pdo, array $idOrder): void {
+    $pdo->beginTransaction();
+    try {
+        foreach ($idOrder as $position => $id) {
+            $stmt = $pdo->prepare("UPDATE todos SET position = ? WHERE id = ?");
+            $stmt->execute([$position, $id]);
         }
-    }
-    $tasks = array_filter($tasks, function($t) use ($id): bool {
-        return $t["id"] !== $id;
-    });
-}
-
-function updateTask(&$tasks, $id, $text, $done): void {
-    foreach ($tasks as &$t) {
-        if ($t["id"] === $id) {
-            $originalText = $t["text"];
-
-            if (!is_null($done)) {
-                $t["done"] = $done;
-                logAction("Status geändert: ID=$id, Text='{$t["text"]}' → " . ($done ? "erledigt" : "offen"));
-            }
-
-            if (!is_null($text)) {
-                if (trim($text) === "") {
-                    logAction("Fehlgeschlagenes Update: Leerer Text (ID=$id)");
-                    http_response_code(400);
-                    echo json_encode(["error" => "Leerer Text ist nicht erlaubt"]);
-                    exit;
-                }
-                $t["text"] = $text;
-                logAction("Text geändert: ID=$id → '$text' (vorher: '$originalText')");
-            }
-            break;
-        }
+        $pdo->commit();
+        logAction("Sortierung aktualisiert: " . implode(", ", $idOrder));
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        logAction("Fehler bei Sortierung: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(["error" => "Fehler beim Sortieren"]);
+        exit;
     }
 }
 
-function createTask(&$tasks, $id, $text, $done): void {
-    $tasks[] = [
-        "id" => $id,
-        "text" => $text,
-        "done" => $done
-    ];
-    logAction("Neue Aufgabe hinzugefügt: ID=$id, Text='$text'");
+function updateTask(PDO $pdo, $id, $text, $done): void {
+    if (!is_null($done)) {
+        $stmt = $pdo->prepare("UPDATE todos SET done = ? WHERE id = ?");
+        $stmt->execute([$done ? 1 : 0, $id]);
+        logAction("Status geändert: ID=$id → " . ($done ? "erledigt" : "offen"));
+    }
+
+    if (!is_null($text) && trim($text) !== "") {
+        $stmt = $pdo->prepare("UPDATE todos SET text = ? WHERE id = ?");
+        $stmt->execute([$text, $id]);
+        logAction("Text geändert: ID=$id → '$text'");
+    }
+}
+
+function deleteTask(PDO $pdo, $id): void {
+    $stmt = $pdo->prepare("DELETE FROM todos WHERE id = ?");
+    $stmt->execute([$id]);
+    logAction("Aufgabe gelöscht: ID=$id");
 }
 
 // --------------------------------------------------
 // --------------------- Ablauf ---------------------
 // --------------------------------------------------
-$jsonFile = "todo.json";
-$tasks = loadTasks($jsonFile);
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    echo json_encode(loadTasks($pdo));
+    exit;
+}
+
 $rawInput = file_get_contents("php://input");
 $data = json_decode($rawInput, true);
+
 
 if (json_last_error() !== JSON_ERROR_NONE) {
     logAction("Ungültiges JSON empfangen: " . json_last_error_msg());
@@ -81,41 +87,39 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
-$id   = trim($data["id"]);
+$id   = trim($data["id"] ?? "");
 $text = isset($data["task"]) ? trim($data["task"]) : null;
 $done = isset($data["done"]) ? $data["done"] : false;
 
 if (isset($data["sort"]) && is_array($data["sort"])) {
-    sortTasks($tasks, $data["sort"]);
-    saveTasks($jsonFile, $tasks);
+    sortTasks($pdo, $data["sort"]);
     echo json_encode(["success" => true]);
     exit;
 }
 
-if (!$data || !isset($data["id"])) {
+
+if (!$id) {
     logAction("Ungültige Eingabe empfangen: " . json_encode($data));
     http_response_code(400);
     echo json_encode(["error" => "Ungültige Eingabe"]);
     exit;
 }
 
-if (!empty($data["delete"]) && !empty($data["id"])) {
-    deleteTask($tasks, $id);
-    saveTasks($jsonFile, $tasks);
+if (!empty($data["delete"])) {
+    deleteTask($pdo, $id);
     echo json_encode(["success" => true]);
     exit;
 }
 
 if (!empty($data["update"])) {
-    updateTask($tasks, $id, $text, isset($data["done"]) ? $data["done"] : null);
-    saveTasks($jsonFile, $tasks);
+    updateTask($pdo, $id, $text, $done);
     echo json_encode(["success" => true]);
     exit;
 }
 
-$exists = array_filter($tasks, function($t) use ($id) {
-    return $t["id"] === $id;
-});
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM todos WHERE id = ?");
+$stmt->execute([$id]);
+$exists = $stmt->fetchColumn() > 0;
 
 if (is_null($text) || $text === "") {
     http_response_code(400);
@@ -125,13 +129,11 @@ if (is_null($text) || $text === "") {
 }
 
 if (!$exists) {
-    createTask($tasks, $id, $text, $done);
-    saveTasks($jsonFile, $tasks);
+    createTask($pdo, $id, $text, $done);
     echo json_encode(["success" => true]);
     exit;
 }
 
-// Fallback falls nichts von den oberen Bedingungen zutrifft (= einfach speichern)
-saveTasks($jsonFile, $tasks);
+// Fallback
 echo json_encode(["success" => true]);
 exit;
