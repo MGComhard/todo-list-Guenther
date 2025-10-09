@@ -121,11 +121,20 @@ input[type="checkbox"] {
 }
 
 .remove-btn {
-  background: none;
+  background-color: transparent;
   border: none;
   color: #f44336;
   font-size: 1.2em;
   cursor: pointer;
+}
+.remove-btn:hover {
+  background-color: #1976d2;
+}
+.edit-btn {
+  background-color: transparent;
+}
+.edit-btn:hover {
+  background-color: #1976d2;
 }
 
 #liveClock {
@@ -167,19 +176,6 @@ input[type="checkbox"] {
 #message {
   color: #ba2e2e;
   font-weight: bold;
-}
-
-.remove-btn {
-  background-color: transparent;
-}
-.remove-btn:hover {
-  background-color: #1976d2;
-}
-.edit-btn {
-  background-color: transparent;
-}
-.edit-btn:hover {
-  background-color: #1976d2;
 }
 
 .modal {
